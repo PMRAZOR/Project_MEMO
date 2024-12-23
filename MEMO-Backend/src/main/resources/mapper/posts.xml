@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.memo.posts.model.mapper.PostsMapper">
+    <insert id="insertPosts" parameterType="com.memo.posts.model.dto.Posts" useGeneratedKeys="true" keyProperty="id">
+        insert into posts(user_id, title, description, start_date, end_date, gpt_keyword, created_at)
+        values(#{userId}, #{title}, #{description}, #{startDate}, #{endDate}, #{keywords}, now())
+    </insert>
+    <insert id="insertPhoto" parameterType="com.memo.posts.model.dto.Posts" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO visit_photos (visit_id, file_name, original_name, file_path)
+        VALUES (#{visitId}, #{fileName}, #{originalName}, #{filePath})
+    </insert>
+    <insert id="insertVisits" parameterType="com.memo.model.dto.Visits" useGeneratedKeys="true" keyProperty="id">
+        insert into visits(post_id, place_id, visit_date, title, description, created_at)
+        values(#{postId}, #{placeId}, #{visitDate}, #{title}, #{description}, now())
+    </insert>
+    <select id="selectAll" resultType="com.memo.posts.model.dto.Posts">
+        select p.id as id, u.id as user_id, u.nickname as nickname, p.title as title, p.gpt_keyword as keywords
+        from users as u, posts as p, visits as v
+        where u.id = p.user_id and p.id = v.post_id
+        <!-- visits의 1번 사진을 썸네일로 가져와야함 <- 사진은 딴곳에서 해결 완료!!! -->
+    </select>
+    <select id="selectByKeyword" resultType="com.memo.posts.model.dto.Posts" parameterType="String">
+        select p.id as id, u.id as user_id, u.nickname as nickname, p.title as title, p.gpt_keyword as keywords
+        from users as u, posts as p, visits as v
+        where u.id = p.user_id and p.id = v.post_id
+        and (p.title like concat('%', #{keyword}, '%')
+        or p.description like concat('%', #{keyword}, '%'))
+        <!-- visits의 1번 사진을 썸네일로 가져와야함 <- 마찬가지로 해결 완료!!-->
+    </select>
+    <select id="selectById" resultType="com.memo.posts.model.dto.Posts" parameterType="int">
+        select p.id as id,
+               u.id as userId, u.nickname as nickname, u.profile_image as profileImage,
+               p.title as title, p.description as description,
+               p.start_date as startDate, p.end_date as endDate, p.gpt_keyword as keywords
+        from users as u, posts as p
+        where u.id = p.user_id and p.id = #{id}
+    </select>
+
+    <select id="selectVisitsByPostsId" resultMap="visitWithPhotosMap">
+        SELECT
+        v.id as visit_id,
+        v.post_id,
+        v.place_id,
+        v.visit_date,
+        v.title as visit_title,
+        v.description as visit_description,
+        v.created_at as visit_created_at,
+        p.name as place_name,
+        p.address as place_address,
+        p.latitude as place_latitude,
+        p.longitude as place_longitude,
+        p.place_type as place_type,
+        ph.id as photo_id,
+        ph.visit_id,  <!-- visit_id 컬럼 추가 -->
+        ph.file_name,
+        ph.original_name,
+        ph.file_path,
+        ph.created_at as photo_created_at
+        FROM visits v
+        JOIN places p ON v.place_id = p.id
+        LEFT JOIN visit_photos ph ON v.id = ph.visit_id
+        WHERE v.post_id = #{postsId}
+    </select>
+
+    <resultMap id="visitWithPhotosMap" type="com.memo.model.dto.Visits">
+        <id property="id" column="visit_id"/>
+        <result property="postId" column="post_id"/>
+        <result property="placeId" column="place_id"/>
+        <result property="visitDate" column="visit_date"/>
+        <result property="title" column="visit_title"/>
+        <result property="description" column="visit_description"/>
+        <result property="createdAt" column="visit_created_at"/>
+        <result property="placeName" column="place_name"/>
+        <result property="placeAddress" column="place_address"/>
+        <result property="placeLatitude" column="place_latitude"/>
+        <result property="placeLongitude" column="place_longitude"/>
+        <result property="placeType" column="place_type"/>
+        <collection property="photos" ofType="com.memo.photos.model.dto.Photos">
+            <id property="id" column="photo_id"/>
+            <result property="visitId" column="visit_id"/>  <!-- visit_id 매핑 추가 -->
+            <result property="fileName" column="file_name"/>
+            <result property="originalName" column="original_name"/>
+            <result property="filePath" column="file_path"/>
+            <result property="createdAt" column="photo_created_at"/>
+        </collection>
+    </resultMap>
+    <delete id="deleteVisits" parameterType="int">
+        delete from visits where post_id = #{id};
+    </delete>
+    <delete id="deletePosts" parameterType="int">
+        delete from posts where id = #{id};
+    </delete>
+    <update id="updatePosts" parameterType="com.memo.posts.model.dto.Posts">
+        update posts
+        set title = #{title}, description = #{description},
+            start_date = #{startDate}, end_date = #{endDate}
+        where id = #{id}
+    </update>
+    <update id="updateVisits" parameterType="com.memo.model.dto.Visits">
+        update visits
+        set title = #{title}, description = #{description}, visit_date = #{visitDate}, place_id = #{placeId}
+        where post_id = #{postId} and id = #{id}
+    </update>
+    <select id="selectVisitId" resultType="int" parameterType="int">
+        select id from visits where post_id = #{id}
+    </select>
+    <select id="findFirstPhotoByPostId" resultType="com.memo.photos.model.dto.Photos">
+        SELECT p.id as id, p.visit_id as visitId, p.file_name as fileName, p.original_name as originalName,p.file_path as filePath, p.created_at as createdAt
+        FROM visit_photos p
+                 JOIN visits v ON p.visit_id = v.id
+        WHERE v.post_id = #{postId}
+        ORDER BY v.id ASC, p.id ASC
+            LIMIT 1
+    </select>
+    <select id="recentPosts" resultType="com.memo.posts.model.dto.Posts" parameterType="int">
+        select p.id as id, p.title as title, p.description as description, gpt_keyword as keywords
+        FROM posts as p
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+    <select id="findPhotosByVisitId" resultType="com.memo.photos.model.dto.Photos" parameterType="int">
+        SELECT id, visit_id as visitId, file_name as fileName,
+               original_name as originalName, file_path as filePath,
+               created_at as createdAt
+        FROM visit_photos
+        WHERE visit_id = #{id}
+    </select>
+    <select id="topPosts" resultType="com.memo.posts.model.dto.Posts" parameterType="int">
+        select p.id as id, p.title as title, p.description as description, gpt_keyword as keywords
+        from posts as p,
+             (select post_id, COUNT(post_id) as bookmark_count
+              from post_bookmarks
+              group by post_id
+              order by 2 desc
+              limit #{limit}) as b
+        where p.id = b.post_id
+        ORDER BY b.bookmark_count DESC;
+    </select>
+    <select id="loadAllPosts" resultType="com.memo.posts.model.dto.Posts" parameterType="int">
+        SELECT *
+        FROM posts
+        LIMIT #{limit}, 5
+    </select>
+</mapper>

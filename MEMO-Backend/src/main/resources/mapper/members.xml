@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.memo.members.repository.MemberRepository">
+    <insert id="save" parameterType="com.memo.entity.Member">
+        insert into users(user_id, password, email, nickname)
+        values(#{userId}, #{password}, #{email}, #{nickname});
+    </insert>
+    <select id="findByUserId" parameterType="String" resultType="com.memo.entity.Member">
+        select id, user_id as userId, password, email, nickname, profile_image as profileImage
+        from users
+        where user_id = #{id}
+        AND is_deleted = false;
+    </select>
+    <select id="findById" parameterType="int" resultType="com.memo.entity.Member">
+        select id, user_id as userId, email, nickname, profile_image as profileImage
+        from users
+        where id = #{id}
+        AND is_deleted = false;
+    </select>
+    <select id="findByEmail" parameterType="String" resultType="com.memo.entity.Member">
+        select id, user_id as userId, password, email, nickname, profile_image as profileImage
+        from users
+        where email = #{email}
+        AND is_deleted = false;
+    </select>
+    <update id="delete">
+        UPDATE users
+        SET is_deleted = true,
+        deleted_at = NOW()
+        WHERE id = #{id}
+    </update>
+    <update id="updateProfile">
+        UPDATE users
+        SET nickname = #{nickname},
+        profile_image = #{profileImage}
+        WHERE user_id = #{userId}
+    </update>
+</mapper>

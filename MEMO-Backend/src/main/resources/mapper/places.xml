@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.memo.places.model.mapper.PlacesMapper">
+    <select id="getTypeList" resultType="com.memo.places.model.dto.PlaceTypes">
+        select * from place_types order by id;
+    </select>
+    <select id="selectByKeyword" resultType="com.memo.places.model.dto.Places" parameterType="String">
+        select * from places where name like '%${keyword}%' order by id;
+    </select>
+    <insert id="insertPlaces" parameterType="com.memo.places.model.dto.Places">
+        insert into places (name, address, latitude, longitude, place_type)
+        values (#{name}, #{address}, #{latitude}, #{longitude}, #{placeType});
+    </insert>
+</mapper>
